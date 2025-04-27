@@ -1,0 +1,23 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Building microservice 1...'
+                // Add build steps here
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Running tests for microservice 1...'
+                // Add test steps here
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo 'Deploying microservice 1...'
+                // Add deploy steps here
+            }
+        }
+    }
+}
