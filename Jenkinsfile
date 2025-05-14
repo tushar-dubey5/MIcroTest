@@ -1,35 +1,31 @@
 pipeline {
   agent any
-
   stages {
-    stage('Trigger downstream services') {
-      parallel {
-        stage('microservice1') {
-          when {
-            changeset "**/microservice1/**"
-          }
-          steps {
-            echo "Changes detected in microservice1/, triggering microservice1-pipeline"
+    stage('Trigger First Matched Service') {
+      steps {
+        script {
+          def changedFiles = sh(script: 'git diff --name-only HEAD~1..HEAD', returnStdout: true).trim()
+          echo "Changed files:\n${changedFiles}"
+
+          if (changedFiles.contains('microservice1/')) {
+            echo "Triggering microservice1-pipeline"
             build job: 'microservice1-pipeline'
+            return // exit early
           }
-        }
-        stage('microservice2') {
-          when {
-            changeset "**/microservice2/**"
-          }
-          steps {
-            echo "Changes detected in microservice2/, triggering microservice2-pipeline"
+
+          if (changedFiles.contains('microservice2/')) {
+            echo "Triggering microservice2-pipeline"
             build job: 'microservice2-pipeline'
+            return // exit early
           }
-        }
-        stage('microservice3') {
-          when {
-            changeset "**/microservice3/**"
-          }
-          steps {
-            echo "Changes detected in microservice3/, triggering microservice3-pipeline"
+
+          if (changedFiles.contains('microservice3/')) {
+            echo "Triggering microservice3-pipeline"
             build job: 'microservice3-pipeline'
+            return // exit early
           }
+
+          echo "No microservice changes detected."
         }
       }
     }
