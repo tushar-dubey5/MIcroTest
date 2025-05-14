@@ -1,34 +1,37 @@
 pipeline {
-    agent any
+  agent any
 
-    stages {
-        stage('Determine Changed Services') {
-            steps {
-                script {
-                    // get one path per line
-                    def changedFiles = sh(script: 'git diff --name-only HEAD~1..HEAD', returnStdout: true)
-                                          .trim()
-                                          .readLines()
-                    echo "Changed files:\n${changedFiles.join('\n')}"
-
-                    // collect top-level dirs that look like microservices
-                    def services = changedFiles.collect { path ->
-                        def parts = path.tokenize('/')
-                        return parts[0]
-                    }.findAll { svc ->
-                        svc in ['microservice1','microservice2','microservice3']
-                    }.unique()
-
-                    if (services.isEmpty()) {
-                        echo "No microservice changes detected; nothing to trigger."
-                    } else {
-                        services.each { svc ->
-                            echo "→ Triggering downstream job for ${svc}"
-                            build job: "${svc}-pipeline"
-                        }
-                    }
-                }
-            }
+  stages {
+    stage('Trigger downstream services') {
+      parallel {
+        stage('microservice1') {
+          when {
+            changeset "**/microservice1/**"
+          }
+          steps {
+            echo "Changes detected in microservice1/, triggering microservice1-pipeline"
+            build job: 'microservice1-pipeline'
+          }
         }
+        stage('microservice2') {
+          when {
+            changeset "**/microservice2/**"
+          }
+          steps {
+            echo "Changes detected in microservice2/, triggering microservice2-pipeline"
+            build job: 'microservice2-pipeline'
+          }
+        }
+        stage('microservice3') {
+          when {
+            changeset "**/microservice3/**"
+          }
+          steps {
+            echo "Changes detected in microservice3/, triggering microservice3-pipeline"
+            build job: 'microservice3-pipeline'
+          }
+        }
+      }
     }
+  }
 }
