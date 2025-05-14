@@ -2,33 +2,29 @@ pipeline {
     agent any
 
     stages {
-        stage('Check Changes') {
+        stage('Determine Changed Services') {
             steps {
                 script {
-                    // Get the list of changed files from the last commit
-                    def changedFiles = sh(script: 'git diff --name-only HEAD~1..HEAD', returnStdout: true).trim()
-                    echo "Changed files: ${changedFiles}"
+                    // get one path per line
+                    def changedFiles = sh(script: 'git diff --name-only HEAD~1..HEAD', returnStdout: true)
+                                          .trim()
+                                          .readLines()
+                    echo "Changed files:\n${changedFiles.join('\n')}"
 
-                    // Initialize a list to hold triggered jobs
-                    def triggeredJobs = []
+                    // collect top-level dirs that look like microservices
+                    def services = changedFiles.collect { path ->
+                        def parts = path.tokenize('/')
+                        return parts[0]
+                    }.findAll { svc ->
+                        svc in ['microservice1','microservice2','microservice3']
+                    }.unique()
 
-                    // Trigger specific pipeline based on changed files
-                    if (changedFiles.contains('microservice1/')) {
-                        if (!triggeredJobs.contains('microservice1-pipeline')) {
-                            build job: 'microservice1-pipeline'
-                            triggeredJobs.add('microservice1-pipeline')
-                        }
-                    }
-                    if (changedFiles.contains('microservice2/')) {
-                        if (!triggeredJobs.contains('microservice2-pipeline')) {
-                            build job: 'microservice2-pipeline'
-                            triggeredJobs.add('microservice2-pipeline')
-                        }
-                    }
-                    if (changedFiles.contains('microservice3/')) {
-                        if (!triggeredJobs.contains('microservice3-pipeline')) {
-                            build job: 'microservice3-pipeline'
-                            triggeredJobs.add('microservice3-pipeline')
+                    if (services.isEmpty()) {
+                        echo "No microservice changes detected; nothing to trigger."
+                    } else {
+                        services.each { svc ->
+                            echo "→ Triggering downstream job for ${svc}"
+                            build job: "${svc}-pipeline"
                         }
                     }
                 }
